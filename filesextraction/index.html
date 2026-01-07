@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<!-- Floating EXTRACTION image -->
+<img id="extraction" src="EXTRACTION01P1-removebg-preview.png" alt="" aria-hidden="true" />
+
+<!-- Options panel revealed after wipe -->
+<div id="panel" aria-hidden="true">
+  <div class="panel-inner" role="toolbar" aria-label="Quick actions">
+    <div class="panel-note" aria-hidden="true">not yet</div>
+  </div>
+</div>
+
+<!-- Settings gear (top-right, icon-only) -->
+<button id="settings-gear" aria-label="Settings" title="Settings" class="settings-gear" data-open="settings" type="button">
+  <!-- cogwheel gear icon (clean, symmetric, no visual artifacts) -->
+  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="gear-icon" role="img" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- symmetric cog shape with central hub -->
+    <g transform="translate(0.15,0.08)">
+      <path d="M20.94 13.34v-2.68l-1.6-.25a6.8 6.8 0 0 0-.5-1.21l.9-1.41-1.9-1.9-1.41.9c-.38-.18-.78-.33-1.21-.5l-.25-1.6h-2.68l-.25 1.6a6.8 6.8 0 0 0-1.21.5l-1.41-.9-1.9 1.9.9 1.41c-.18.38-.33.78-.5 1.21l-1.6.25v2.68l1.6.25c.17.43.32.83.5 1.21l-.9 1.41 1.9 1.9 1.41-.9c.38.18.78.33 1.21.5l.25 1.6h2.68l.25-1.6c.43-.17.83-.32 1.21-.5l1.41.9 1.9-1.9-.9-1.41c.18-.38.33-.78.5-1.21l1.6-.25z" />
+    </g>
+  </svg>
+</button>
+
+<!-- Single global close X at top-left (shown only when search preview is active) -->
+<button id="global-back" class="search-back global-back" aria-label="Close search preview" title="Close preview" type="button" hidden>&times;</button>
+
+<!-- Settings modal -->
+<div id="settings-modal" aria-hidden="true" class="settings-modal" role="dialog" aria-label="Settings">
+  <div class="settings-card">
+  <div class="settings-header">
+    <button class="settings-close" aria-label="Close settings">&times;</button>
+  </div>
+  <div class="settings-body">
+    <div class="panel-note" style="padding:22px 18px;text-align:center;">not yet</div>
+  </div>
+</div>
+</div>
+
+<!-- Search modal (hidden until invoked) -->
+<div id="search-modal" aria-hidden="true">
+  <div class="search-scrim" data-close="true" tabindex="-1"></div>
+  <div class="search-card" role="dialog" aria-label="Search preview">
+    <!-- (moved top-left) -->
+    <div class="search-header">
+      <div class="search-title">Preview — site files</div>
+    </div>
+    <div class="search-viewport">
+      <!-- iframe clipped/styled to show part of the site -->
+      <div class="search-viewport-inner">
+        <div id="search-frame" class="search-frame" aria-live="polite" role="document"></div>
+      </div>
+
+      <!-- Provider chooser: shown when the embedded preview sends a search message -->
+      <div id="search-chooser" aria-hidden="true" class="search-chooser" role="dialog" aria-label="Choose search engine">
+        <div class="chooser-inner">
+          <div class="chooser-title">Open search with</div>
+          <div class="chooser-actions">
+            <button data-provider="bing" class="chooser-btn">Bing</button>
+            <button data-provider="google" class="chooser-btn">Google</button>
+            <button data-provider="ddg" class="chooser-btn">DuckDuckGo</button>
+            <button data-provider="newtab" class="chooser-btn neutral">Open in new tab</button>
+            <button data-action="cancel" class="chooser-btn cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-footer">Showing a stylized preview of the site files</div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>
