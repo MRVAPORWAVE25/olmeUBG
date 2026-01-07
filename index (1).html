@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Search — Minimal</title>
+<style>
+  :root{ --bg:#071015; --accent:#9feee0; color:#dff6ef; font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial; }
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--accent);-webkit-font-smoothing:antialiased; display:flex;align-items:center;justify-content:center}
+  .wrap{width:min(92vw,720px);padding:12px}
+  .bar{display:flex;gap:8px;align-items:center;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04)}
+  input[type="search"]{flex:1;padding:12px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--accent);outline:none;font-size:16px}
+  button{background:linear-gradient(180deg,rgba(159,238,224,0.12),rgba(0,0,0,0.06));border:1px solid rgba(255,255,255,0.04);color:var(--accent);padding:10px 12px;border-radius:8px;cursor:pointer;font-weight:700}
+  .muted{font-size:13px;color:rgba(223,246,239,0.6);margin-top:8px;text-align:center}
+</style>
+</head>
+<body>
+  <div class="wrap" role="main" aria-label="Minimal search">
+    <div class="bar" role="search" aria-label="Search input">
+      <input id="q" type="search" placeholder="Search — press Enter or click Search" aria-label="Search query" />
+      <button id="go">Search</button>
+    </div>
+    <div class="muted">Search will send the query to the parent/host for handling.</div>
+  </div>
+
+<script>
+(function(){
+  const input = document.getElementById('q');
+  const go = document.getElementById('go');
+
+  function buildProviders(query){
+    const q = encodeURIComponent(query || '');
+    return {
+      bing: 'https://www.bing.com/search?q=' + q,
+      ddg:  'https://duckduckgo.com/?q=' + q,
+      google: 'https://www.google.com/search?q=' + q
+    };
+  }
+
+  function sendQueryToParent(query){
+    const providers = buildProviders(query);
+    // post a structured message to parent; parent can pick provider and act
+    const msg = { type: 'search', query: query, providers: providers, source: 'minimal-search' };
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(msg, '*');
+      } else if (window.opener) {
+        window.opener.postMessage(msg, '*');
+      } else {
+        // fallback: open default (bing) in new tab
+        window.open(providers.bing, '_blank', 'noopener');
+      }
+    } catch (e) {
+      // on error, fall back to opening Bing
+      window.open(providers.bing, '_blank', 'noopener');
+    }
+  }
+
+  go.addEventListener('click', ()=>{
+    const q = input.value.trim();
+    if(!q) return;
+    sendQueryToParent(q);
+  });
+
+  input.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      go.click();
+    }
+  });
+
+  // prefill a sample term for convenience
+  input.value = '';
+})();
+</script>
+</body>
+</html>
