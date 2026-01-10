@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Games</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  /* Local adjustments while preserving the site's shared background */
+  :root{ --accent:#00e0c6; }
+  /* Allow this page to scroll even though the global stylesheet hides overflow */
+  html,body{
+    height:100%;
+    margin:0;
+    color:var(--accent);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;
+    background:transparent;
+    overflow:auto; /* enable vertical scrolling for the games page */
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Ensure the shared animated canvas sits fixed behind content */
+  #bg{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+  /* Bring page content above the canvas */
+  .wrap{min-height:100vh;box-sizing:border-box;padding:18px;display:flex;flex-direction:column;gap:14px;align-items:center;position:relative;z-index:1;}
+  .header{width:100%;max-width:980px;display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:36px;position:relative;}
+  .title{font-size:40px;font-weight:900;color:var(--accent);text-align:center;letter-spacing:0.6px;
+    text-shadow:0 8px 30px rgba(0,224,198,0.08),0 0 26px rgba(102,240,224,0.08);}
+  .controls{width:100%;max-width:980px;display:flex;gap:10px;align-items:center;justify-content:center;padding-top:6px}
+  .search{width:100%;max-width:640px;height:46px;border-radius:12px;padding:10px 14px;border:1px solid rgba(255,255,255,0.04);
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.03));color:var(--accent);font-weight:700;font-size:16px;outline:none}
+  .search::placeholder{ color: rgba(223,246,239,0.48); }
+
+  /* back button */
+  .back-btn{
+    position:absolute;
+    left:12px;
+    top:12px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    height:40px;
+    min-width:40px;
+    padding:8px 10px;
+    gap:8px;
+    border-radius:10px;
+    border:none;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
+    color: #cfeee9;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+    z-index:3;
+  }
+  .back-btn:active{ transform: translateY(1px); }
+  .grid{width:100%;max-width:1100px;display:grid;grid-template-columns:repeat(5,1fr);gap:14px;padding-top:12px}
+  @media (max-width:1100px){ .grid{grid-template-columns:repeat(4,1fr);} }
+  @media (max-width:860px){ .grid{grid-template-columns:repeat(3,1fr);} }
+  @media (max-width:560px){ .grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:380px){ .grid{grid-template-columns:repeat(1,1fr);} }
+  .tile{border-radius:12px;padding:14px;height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04));border:1px solid rgba(255,255,255,0.03);cursor:pointer;font-weight:800}
+  .tile:active{transform:translateY(1px)}
+  .thumb{font-size:14px;color:var(--accent);text-align:center}
+  .meta{font-size:12px;color:rgba(223,246,239,0.6);margin-top:8px;text-align:center}
+  .hint{font-size:13px;color:rgba(223,246,239,0.6);text-align:center;margin-top:8px}
+
+/* Modal preview for a game (iframe) */
+.game-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.game-modal[aria-hidden="false"] { display: flex; }
+.game-modal .scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(2,6,8,0.75);
+  backdrop-filter: blur(4px);
+}
+.game-modal .card {
+  position: relative;
+  width: min(92vw, 900px);
+  height: min(78vh, 600px);
+  background: linear-gradient(180deg, rgba(12,14,16,0.98), rgba(8,10,12,0.98));
+  border-radius: 12px;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.03);
+  z-index: 2;
+  display:flex;
+  flex-direction:column;
+}
+.game-modal .card .top {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:10px 12px;
+  border-bottom:1px solid rgba(255,255,255,0.02);
+}
+.game-modal .card .title { font-weight:800; color:var(--accent); font-size:18px; }
+.game-modal .card .close {
+  background:transparent; border:none; color:#cfeee9; font-size:20px; line-height:1; padding:6px 8px; border-radius:8px; cursor:pointer;
+}
+.game-modal .card iframe {
+  flex:1;
+  border:0;
+  width:100%;
+  height:100%;
+  background:transparent;
+}
+</style>
+</head>
+<body class="games">
+
+  <canvas id="bg"></canvas>
+
+  <div class="wrap" role="main" aria-label="Games">
+    <div class="header">
+      <button id="back-to-main" class="back-btn" aria-label="Back to main" title="Back to main">&larr; Back</button>
+      <div class="title" id="page-title">Games</div>
+      <div class="controls">
+        <input id="search" class="search" type="search" placeholder="Filter games" aria-label="Filter games" />
+      </div>
+    </div>
+
+    <div id="grid" class="grid" role="list" aria-live="polite"></div>
+
+    <div id="hint" class="hint">Tap a tile to load a placeholder preview; the grid auto-adjusts when games are added.</div>
+  </div>
+
+<script>
+(function(){
+  const grid = document.getElementById('grid');
+  const search = document.getElementById('search');
+
+  // simple registry of placeholder games (easy to extend via window.__addGame)
+  const games = {
+    // load BitLife directly in the preview iframe
+    bitlife:{title:'BitLife', desc:'BitLife — life simulator', key:'bitlife', url:'https://mspoi.github.io/seraph/games/bitlife/index.html'},
+    cookieclicker:{title:'Cookie Clicker', desc:'Cookie Clicker — idle clicker', key:'cookieclicker', url:'https://mspoi.github.io/seraph/games/cookieclicker/index.html'},
+    slope:{title:'Slope', desc:'Slope — 3D rolling game', key:'slope', url:'https://mspoi.github.io/seraph/games/slope/index.html'},
+    sm64:{title:'Super Mario 64', desc:'Super Mario 64 — 3D platformer', key:'sm64', url:'https://mspoi.github.io/seraph/games/sm64/index.html'},
+    cellmachine:{title:'Cell Machine', desc:'Cell Machine — cellular automata sandbox', key:'cellmachine', url:'https://mspoi.github.io/seraph/games/cellmachine/index.html'},
+    getawayshootout:{title:'Getaway Shootout', desc:'Getaway Shootout — local multiplayer arena shooter', key:'getawayshootout', url:'https://mrvaporwave25.github.io/ubgonline/gtwyshtut/index.html'},
+    drivemad:{title:'Drive Mad', desc:'Drive Mad — top-down driving mayhem', key:'drivemad', url:'https://griffylock.neocities.org/drivemad/drivemad'},
+    drive200:{title:'Drive Mad 200 Levels', desc:'Drive Mad 200 Levels — extended Drive Mad experience', key:'drive200', url:'https://griffylock.neocities.org/drive200'},
+    doodlejump:{title:'Doodle Jump', desc:'Doodle Jump — vertical platformer', key:'doodlejump', url:'https://mspoi.github.io/seraph/games/doodlejump/index.html'},
+    kitchengungame:{title:'Kitchen Gun Game', desc:'Kitchen Gun Game — chaotic FPS in a kitchen', key:'kitchengungame', url:'https://glcdn.githack.com/technonyte00/vapor-game-assets/-/raw/main/kitchen-gun-game/index.html'},
+    fnafworld:{title:'FNAF World', desc:'FNAF World — RPG spinoff', key:'fnafworld', url:'https://griffylock.neocities.org/FNAFW'},
+    operius:{title:'Operius', desc:'Operius — browser experience', key:'operius', url:'https://bitfexl.github.io/operius/'},
+    crazycattle3d:{title:'Crazy Cattle 3D', desc:'Crazy Cattle 3D — bovine mayhem in 3D', key:'crazycattle3d', url:'https://griffylock.neocities.org/Crazycattle3D'},
+    crossyroad:{title:'Crossy Road', desc:'Crossy Road — arcade-style traffic-crossing', key:'crossyroad', url:'https://glcdn.githack.com/technonyte00/vapor-game-assets/-/raw/main/crossyroad/index.html'},
+    // new: 500 Caliber Contractz — added by user request
+    '500calibercontractz':{
+      title: '500 Caliber Contractz',
+      desc: '500 Caliber Contractz — browser-hosted action experience',
+      key: '500calibercontractz',
+      url: 'https://mrvaporwave25.github.io/500calibercontractzWP/'
+    },
+    // added: Moto X3M
+    motox3m:{
+      title: 'Moto X3M',
+      desc: 'Moto X3M — physics-based motorcycle platformer',
+      key: 'motox3m',
+      url: 'https://mspoi.github.io/seraph/games/motox3m/index.html'
+    },
+    // added: Burrito Bison
+    burritobison: {
+      title: 'Burrito Bison',
+      desc: 'Burrito Bison — arcade flinging brawler',
+      key: 'burritobison',
+      url: 'https://griffylock.neocities.org/BurritoBison'
+    },
+    // added: Doge 2048
+    doge2048: {
+      title: 'Doge 2048',
+      desc: 'Doge 2048 — 2048 variant with Doge theme',
+      key: 'doge2048',
+      url: 'https://griffylock.neocities.org/Doge2048'
+    },
+    // added: Dogeminer
+    dogeminer: {
+      title: 'Dogeminer',
+      desc: 'Dogeminer — incremental mining adventure with Doge',
+      key: 'dogeminer',
+      url: 'https://griffylock.neocities.org/Dogeminer'
+    },
+    // added: Angry Birds
+    angrybirds: {
+      title: 'Angry Birds',
+      desc: 'Angry Birds — physics-based slingshot puzzler',
+      key: 'angrybirds',
+      url: 'https://griffylock.neocities.org/AngryBirds'
+    },
+    // added: Block Blast (user requested)
+    blockblast: {
+      title: 'Block Blast',
+      desc: 'Block Blast — arcade block-bursting action',
+      key: 'blockblast',
+      url: 'https://mrvaporwave25.github.io/blockingblasttable/game_af9c_a45849eb55ba2/game_af9c_a45849eb55ba2/'
+    },
+    // added: Webfishing (user requested)
+    webfishing: {
+      title: 'Webfishing',
+      desc: 'Webfishing — casual web-based fishing game',
+      key: 'webfishing',
+      url: 'https://mrvaporwave25.github.io/rainbowmathstash/games/Webfishing/index.html'
+    },
+    // added: Balatro (user requested)
+    balatro: {
+      title: 'Balatro',
+      desc: 'Balatro — browser-based game',
+      key: 'balatro',
+      url: 'https://mrvaporwave25.github.io/rainbowmathstash/games/balatro/index.html'
+    },
+    // added: Super Fowlst (requested)
+    superfowlst: {
+      title: 'Super Fowlst',
+      desc: 'Super Fowlst — colorful platformer from the vapor assets pack',
+      key: 'superfowlst',
+      url: 'https://glcdn.githack.com/technonyte00/vapor-game-assets/-/raw/main/superfowlist/index.html'
+    },
+    // added: Subway Surfers (per request)
+    subwaysurfers: {
+      title: 'Subway Surfers',
+      desc: 'Subway Surfers — endless runner',
+      key: 'subwaysurfers',
+      url: 'https://glcdn.githack.com/technonyte00/vapor-game-assets/-/raw/main/subway-surfers/index.html'
+    },
+    // added: Glitch Karts (per latest request)
+    glitchkarts: {
+      title: 'Glitch Karts',
+      desc: 'Glitch Karts — a karting game made as a promo for the company Glitch',
+      key: 'glitchkarts',
+      url: 'https://griffylock.neocities.org/GlitchKarts'
+    },
+    // moved: Tattletail (updated description & link)
+    tattletail: {
+      title: 'Tattletail',
+      desc: 'Tattletail — a horror game taking a dark twist on furbies',
+      key: 'tattletail',
+      url: 'https://griffylock.neocities.org/Tattletail'
+    },
+    // added: Fallout (requested)
+    fallout: {
+      title: 'Fallout',
+      desc: 'Fallout — classic post-apocalyptic browser experience',
+      key: 'fallout',
+      url: 'https://griffylock.neocities.org/Fallout'
+    },
+    // added: Omori (requested)
+    omori: {
+      title: 'Omori',
+      desc: 'Omori — psychological RPG',
+      key: 'omori',
+      url: 'https://griffylock.neocities.org/OMORI'
+    },
+    // added: Dreader (requested) — placed as the latest entry so future adds come after it
+    dreader: {
+      title: 'Dreader',
+      desc: 'Dreader — horror browser experience',
+      key: 'dreader',
+      url: 'https://griffylock.neocities.org/Dreader'
+    },
+    // added: Bacon May Die (requested)
+    baconmaydie: {
+      title: 'Bacon May Die',
+      desc: 'Bacon May Die — browser-hosted experience',
+      key: 'baconmaydie',
+      url: 'https://griffylock.neocities.org/BMD'
+    },
+    // added: Deepest Sword (requested)
+    deepestsword: {
+      title: 'Deepest Sword',
+      desc: 'Deepest Sword — browser-hosted action experience',
+      key: 'deepestsword',
+      url: 'https://griffylock.neocities.org/DeepestSword'
+    },
+    // added: Digger (requested)
+    digger: {
+      title: 'Digger',
+      desc: 'Digger — classic arcade digging action',
+      key: 'digger',
+      url: 'https://lutzroeder.github.io/digger/'
+    },
+
+    // added: Spacebar Clicker (user requested)
+    spacebarclicker: {
+      title: 'Spacebar Clicker',
+      desc: 'Spacebar Clicker — idle/tap style browser game',
+      key: 'spacebarclicker',
+      url: 'https://mrvaporwave25.github.io/Gams/g/spacebarclicker.html'
+    },
+    // added: Edge Not Found (requested)
+    edgenotfound: {
+      title: 'Edge Not Found',
+      desc: 'Edge Not Found — browser platformer',
+      key: 'edgenotfound',
+      url: 'https://glcdn.githack.com/technonyte00/vapor-game-assets/-/raw/main/edgenotfound/index.html'
+    }
+  };
+
+  function renderGrid(filter=''){
+    const q = (filter||'').trim().toLowerCase();
+    grid.innerHTML = '';
+    const keys = Object.keys(games);
+    const visible = keys.filter(k=>{
+      const g = games[k];
+      return !q || g.title.toLowerCase().includes(q) || (g.desc && g.desc.toLowerCase().includes(q));
+    });
+    if(visible.length===0){
+      const nr = document.createElement('div');
+      nr.className='tile';
+      nr.style.gridColumn='1/-1';
+      nr.textContent='No games found.';
+      grid.appendChild(nr);
+      return;
+    }
+    visible.forEach(k=>{
+      const g = games[k];
+      const item = document.createElement('div');
+      item.className='tile';
+      item.tabIndex=0;
+      item.dataset.key = k;
+      const thumb = document.createElement('div'); thumb.className='thumb'; thumb.textContent = g.title;
+      const meta = document.createElement('div'); meta.className='meta'; meta.textContent = g.desc;
+      item.appendChild(thumb); item.appendChild(meta);
+      item.addEventListener('click', ()=> showPreview(g));
+      item.addEventListener('keydown', (e)=>{ if(e.key==='Enter') showPreview(g); });
+      grid.appendChild(item);
+    });
+  }
+
+  function showPreview(g){
+    // Create or reuse an in-page modal that hosts a blob-backed iframe preview of the game
+    let modal = document.getElementById('game-modal');
+    if(!modal){
+      modal = document.createElement('div');
+      modal.id = 'game-modal';
+      modal.className = 'game-modal';
+      modal.setAttribute('aria-hidden','true');
+
+      modal.innerHTML = `
+        <div class="scrim" data-close="true" tabindex="-1"></div>
+        <div class="card" role="dialog" aria-label="Game preview">
+          <div class="top">
+            <div class="title"></div>
+            <button class="close" aria-label="Close preview">&times;</button>
+          </div>
+          <iframe sandbox="allow-scripts allow-same-origin" scrolling="no" title="Game preview"></iframe>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      // close handlers
+      modal.querySelectorAll('[data-close], .close').forEach(el=>{
+        el.addEventListener('click', ()=> {
+          closeModal();
+        }, {passive:true});
+      });
+
+      window.addEventListener('keydown', (e)=>{
+        if(e.key === 'Escape' && modal.getAttribute('aria-hidden') === 'false') closeModal();
+      }, {passive:true});
+    }
+
+    const titleEl = modal.querySelector('.title');
+    const cardEl = modal.querySelector('.card');
+    const iframe = modal.querySelector('iframe');
+
+    // Special sizing for certain games so the preview iframe matches their natural layout
+    if (g.key === 'doodlejump') {
+      // give more vertical space for this game (fills most of viewport height)
+      cardEl.style.width = 'min(98vw, 980px)';
+      cardEl.style.height = 'min(92vh, 900px)';
+    } else if (g.key === 'doge2048') {
+      // Prefer a square modal for 2048 so the grid fits without letterboxing
+      // choose a responsive square: 86vw up to 700px
+      cardEl.style.width = 'min(86vw, 700px)';
+      cardEl.style.height = 'min(86vw, 700px)';
+      // ensure iframe contents scale to fit the square preview area
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+      // disable scrolling inside the preview to avoid inner scrollbars
+      try { iframe.setAttribute('scrolling', 'no'); } catch (e) {}
+    } else {
+      // reset to default sizing used in CSS
+      cardEl.style.width = '';
+      cardEl.style.height = '';
+    }
+
+    // Ensure iframe fills the card
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+
+    // If the game provides a real URL, load it directly into the sandboxed iframe;
+    // otherwise fallback to a small HTML placeholder blob as before.
+    if (g.url) {
+      // revoke any previous blob URL if present
+      try {
+        if (iframe._blobUrl) {
+          URL.revokeObjectURL(iframe._blobUrl);
+          iframe._blobUrl = null;
+        }
+      } catch (e){}
+
+      // load the external game page (sandboxed)
+      iframe.src = g.url;
+      // For FNAF World, explicitly disable scrolling inside the preview by
+      // preventing wheel/touchmove on the modal card so the iframe won't scroll.
+      if (g.key === 'fnafworld') {
+        try {
+          iframe.setAttribute('scrolling', 'no');
+          const cardEl = modal.querySelector('.card');
+          const wheelHandler = (ev) => { ev.preventDefault(); };
+          if (cardEl) {
+            cardEl.addEventListener('wheel', wheelHandler, { passive: false });
+            cardEl.addEventListener('touchmove', wheelHandler, { passive: false });
+            // store handler so we can remove it on close
+            iframe._wheelHandler = wheelHandler;
+          }
+        } catch (e) { /* fail silently if environment forbids listeners */ }
+      }
+    } else {
+      // Build a small HTML blob as the preview contents (sandboxed iframe will run this)
+      const previewHtml = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>${escapeHtml(g.title)}</title>
+        <style>
+          html,body{height:100%;margin:0;background:linear-gradient(180deg, rgba(8,12,16,1) 0%, rgba(10,14,18,0.9) 50%, rgba(2,6,8,1) 100%);color:#9feee0;font-family:system-ui, -apple-system;display:flex;align-items:center;justify-content:center}
+          .box{padding:18px;text-align:center}
+          h2{margin:0 0 6px;font-size:20px}
+          p{margin:0;opacity:.9}
+        </style>
+        </head><body><div class="box"><h2>${escapeHtml(g.title)}</h2><p>${escapeHtml(g.desc)}</p><div style="margin-top:12px;opacity:.75;font-size:13px">This is an embedded placeholder preview.</div></div></body></html>`;
+
+      // revoke previous blob URL if present
+      if(iframe._blobUrl){
+        URL.revokeObjectURL(iframe._blobUrl);
+        iframe._blobUrl = null;
+      }
+      const blob = new Blob([previewHtml], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      iframe._blobUrl = blobUrl;
+      iframe.src = blobUrl;
+    }
+
+    // set title and show modal
+    titleEl.textContent = g.title || 'Preview';
+    modal.setAttribute('aria-hidden','false');
+
+    function closeModal(){
+      modal.setAttribute('aria-hidden','true');
+      // tidy up iframe src and revoke blob URL
+      try {
+        // remove any wheel/touch handlers we attached for no-scroll behavior
+        if (iframe && iframe._wheelHandler) {
+          try {
+            const cardElLocal = modal.querySelector('.card');
+            if (cardElLocal) {
+              cardElLocal.removeEventListener('wheel', iframe._wheelHandler, { passive: false });
+              cardElLocal.removeEventListener('touchmove', iframe._wheelHandler, { passive: false });
+            }
+          } catch (remErr) {}
+          try { iframe._wheelHandler = null; } catch (nerr) {}
+        }
+
+        if(iframe._blobUrl) {
+          iframe.src = 'about:blank';
+          URL.revokeObjectURL(iframe._blobUrl);
+          iframe._blobUrl = null;
+        } else {
+          // best-effort: clear src for external iframes as well
+          try { iframe.src = 'about:blank'; } catch(e){}
+        }
+      } catch(e){}
+      // restore any inline sizing so subsequent previews start clean
+      try { cardEl.style.width = ''; cardEl.style.height = ''; } catch(e){}
+    }
+
+    // focus close button for keyboard users
+    const closeBtn = modal.querySelector('.close');
+    if(closeBtn) closeBtn.focus();
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  // live filtering
+  let last = '';
+  search.addEventListener('input', (e)=>{
+    const v = e.target.value || '';
+    if(v===last) return;
+    last = v;
+    renderGrid(v);
+  });
+
+  // initial render
+  renderGrid();
+
+  // allow programmatic additions
+  window.__addGame = function(key,data){
+    if(!key||!data) return;
+    games[key]=Object.assign({title:key,desc:''},data);
+    renderGrid(search.value);
+  };
+})();
+</script>
+
+<script>
+  // Back button: request the parent to remove any fullscreen iframe when embedded,
+  // then navigate this window to the homepage (/index.html) in the same tab.
+  (function(){
+    const btn = document.getElementById('back-to-main');
+    if(!btn) return;
+    btn.addEventListener('click', () => {
+      try {
+        // If embedded, tell parent to remove the iframe (parent will reveal the main page)
+        if (window.parent && window.parent !== window) {
+          try {
+            window.parent.postMessage({ type: 'close-preview', source: 'games-page' }, '*');
+          } catch (e) {
+            // ignore postMessage errors
+          }
+        }
+
+        // Prefer to remove any local fullscreen iframe if present
+        const iframe = document.getElementById('__search_full_iframe');
+        if (iframe && iframe.parentNode) {
+          try { iframe.parentNode.removeChild(iframe); } catch (e) {}
+        }
+
+        // Navigate this window to the site's homepage (explicit same-tab /index.html)
+        try { window.location.href = '/index.html'; } catch (e) {
+          // fallback: try history.back()
+          try {
+            if (window.history && window.history.length > 1) window.history.back();
+          } catch (err){}
+        }
+      } catch (e) {
+        try {
+          if (window.history && window.history.length > 1) window.history.back();
+          else window.location.href = '/index.html';
+        } catch (err) {}
+      }
+    }, { passive: true });
+  })();
+</script>
+
+<!-- include site background script so the shared animated canvas runs -->
+<script type="module" src="../main.js"></script>
+</body>
+</html>
