@@ -374,7 +374,7 @@ document.querySelectorAll('.panel-btn').forEach(btn => {
 
     if (action === 'games') {
       // Load the local games listing into the in-page fullscreen iframe so navigation works when embedded.
-      const targetUrl = '/github-fork-files/game.html';
+      const targetUrl = 'newExtr/github-fork-files/game.html';
 
       // Hide panel and splash visual to keep UI clean
       if (panel) {
@@ -399,7 +399,7 @@ document.querySelectorAll('.panel-btn').forEach(btn => {
 
     if (action === 'apps') {
       // Load the local apps listing into the in-page fullscreen iframe so navigation works when embedded.
-      const targetUrl = '/github-fork-files/apps.html';
+      const targetUrl = 'newExtr/github-fork-files/apps.html';
 
       // Hide panel and splash visual to keep UI clean
       if (panel) {
@@ -433,7 +433,7 @@ document.querySelectorAll('.panel-btn').forEach(btn => {
       }
 
       // Create the fullscreen wrapped iframe chain and reveal the global back button.
-      const targetUrl = '/github-fork-files/index.html';
+      const targetUrl = 'newExtr/github-fork-files/index.html';
       try {
         createFullscreenIframe(targetUrl);
       } catch (e) {
